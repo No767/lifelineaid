@@ -44,7 +44,7 @@ class PostPinModel(BaseModel):
     
 class ShowcaseModel(BaseModel):
     name: str
-    content: str
+    description: str
 
 
 @app.get("/dev/search")
@@ -73,8 +73,8 @@ async def create_showcase(content: ShowcaseModel):
     conn = await asyncpg.connect(dsn=COCKROACH_URI)
     status = await conn.execute(sql, content.name, content.description)
     if status[-1] != "0":
-        return ORJSONResponse(status_code=201)
-    return ORJSONResponse(status_code=203)
+        return ORJSONResponse(content="", status_code=201)
+    return ORJSONResponse(content="", status_code=203)
 
 @app.post("/dev/delete/{id}")
 async def delete_showcase(id: int):
@@ -85,8 +85,8 @@ async def delete_showcase(id: int):
     conn = await asyncpg.connect(dsn=COCKROACH_URI)
     status = await conn.execute(sql, id)
     if status[-1] != "0":
-        return ORJSONResponse(status_code=200)
-    return ORJSONResponse(status_code=404)
+        return ORJSONResponse(content="", status_code=200)
+    return ORJSONResponse(content="", status_code=404)
     
 # @app.route("/create_pins", methods=["POST"])
 # async def create_pins(content: PostPinModel) -> None:
