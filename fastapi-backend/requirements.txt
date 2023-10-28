@@ -1,0 +1,6 @@
+hypercorn
+uvicorn[standard]
+fastapi
+python-dotenv
+asyncpg
+asyncpg-trek

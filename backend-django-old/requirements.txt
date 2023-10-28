@@ -1,0 +1,7 @@
+django
+djangorestframework
+markdown
+django-filter
+psycopg[binary]
+django-cockroachdb==4.2.*
+python-dotenv
