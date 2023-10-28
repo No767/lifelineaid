@@ -1,6 +1,7 @@
-hypercorn
-uvicorn[standard]
-fastapi
-python-dotenv
-asyncpg
-asyncpg-trek
+hypercorn>=0.14.4
+uvicorn[standard]>=0.23.2
+orjson>=3.9.10
+fastapi>=0.104.0
+python-dotenv>=1.0.0
+asyncpg>=0.28.0
+asyncpg-trek>=0.3.1
