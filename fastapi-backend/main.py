@@ -76,7 +76,7 @@ async def create_showcase(content: ShowcaseModel):
         return ORJSONResponse(content="", status_code=201)
     return ORJSONResponse(content="", status_code=203)
 
-@app.post("/dev/delete/{id}")
+@app.delete("/dev/delete/{id}")
 async def delete_showcase(id: int):
     sql = """
     DELETE FROM devtest
