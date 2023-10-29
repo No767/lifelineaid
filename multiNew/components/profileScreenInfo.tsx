@@ -1,57 +1,51 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Image } from 'react-native';
 
-import Colors from '../constants/Colors';
-import { ExternalLink } from './ExternalLink';
-import { MonoText } from './StyledText';
 import { Text, View } from './Themed';
 
-
-
-export default function EditScreenInfo({ path }: { path: string }) {
+export default function EditScreenInfo({path} : {path: string}) {
   return (
-    <View>
-      <View style={styles.getStartedContainer}>
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          This is going to be the profile page
-        </Text>
-
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          This page will display user medical info, etc
-        </Text>
-      </View>
-
-       
+    <View style={styles.container}>
+      <Text style={styles.username}>@benitezashly</Text>
+      
+      <Image style={styles.profileImage} source={{uri: '/Users/javi/Desktop/hackathons/calhacks23/lifelineaid/multiNew/assets/images/icon.png'}} />
+      
+      <Text style={styles.header}>Account Setting:</Text>
+      <Text style={styles.item}>Password</Text>
+      <Text style={styles.item}>Personal Information</Text>
+      <Text style={styles.item}>Verification</Text>
+      
+      <Text style={styles.header}>Medical Information</Text>
+      <Text style={styles.item}>Emergency Contact</Text>
+      <Text style={styles.item}>Medication</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  getStartedContainer: {
-    alignItems: 'center',
-    marginHorizontal: 50,
-    
-    
+  container: {
+    padding: 20,
   },
-  homeScreenFilename: {
-    marginVertical: 7,
-
-  },
-  codeHighlightContainer: {
-    borderRadius: 3,
-    paddingHorizontal: 4,
-    
-  },
-  getStartedText: {
-    fontSize: 17,
-    lineHeight: 24,
+  username: {
+    fontSize: 24,
+    fontWeight: 'bold',
     textAlign: 'center',
-    
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 20,
+  },
+  item: {
+    fontSize: 16,
+    paddingVertical: 8,
   },
 });
