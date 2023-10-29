@@ -1,46 +1,17 @@
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, TypedDict
+from typing import AsyncIterator
 
 import asyncpg
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import ORJSONResponse
 
-from utils import CreateAlertModel, CreatePinModel
+from utils import CreateAlertModel, CreatePinModel, PinInfo, PoolState
 
 load_dotenv()
 
 COCKROACH_URI = os.environ["COCKROACH_URI"]
-
-from shapely.wkt import loads
-
-
-class PinDict(TypedDict):
-    point: str
-    title: str
-    description: str
-
-
-class PinInfo:
-    __slots__ = ("point", "title", "description")
-
-    def __init__(self, entry: PinDict):
-        self.point = entry["point"]
-        self.title = entry["title"]
-        self.description = entry["description"]
-
-    def to_dict(self):
-        parsed_point = loads(self.point)
-        return {
-            "point": (parsed_point.x, parsed_point.y),
-            "title": self.title,
-            "description": self.description,
-        }
-
-
-class PoolState(TypedDict):
-    pool: asyncpg.Pool
 
 
 @asynccontextmanager
