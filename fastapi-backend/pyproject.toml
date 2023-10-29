@@ -1,0 +1,25 @@
+# All rules based off of Catherine-Chan, Kumiko, and discord.py
+
+[tool.isort]
+profile = 'black'
+combine_as_imports = true
+combine_star = true
+line_length = 80
+
+[tool.pyright]
+include = ["*.py"]
+exclude = [
+    "**/__pycache__", 
+    "**/.mypy_cache", 
+    "**/.dmpypy.json", 
+]
+reportMissingImports = true
+typeCheckingMode = "basic"
+reportUnnecessaryTypeIgnoreComment = "warning"
+
+[tool.bandit]
+skips = ["B311", "B101"]
+
+[tool.ruff]
+ignore = ["E501", "N999", "E402", "S101"]
+select = ["E", "F", "N", "ASYNC", "S", "ERA"]

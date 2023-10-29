@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 ENV_PATH = Path(__file__).parent / ".env"
-print(ENV_PATH)
 
 load_dotenv(dotenv_path=ENV_PATH)
 
