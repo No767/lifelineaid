@@ -1,6 +1,6 @@
 import asyncpg
 from fastapi import APIRouter, Request
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import ORJSONResponse, Response
 
 from utils import CreatePinModel, PinInfo
 
@@ -8,7 +8,8 @@ pins_router = APIRouter(prefix="/pins", default_response_class=ORJSONResponse)
 
 
 @pins_router.post("/create")
-async def create_pin(json_request: CreatePinModel, request: Request):
+async def create_pin(json_request: CreatePinModel, request: Request) -> Response:
+    """Creates a new pin from the specified JSON model"""
     # 1. Title
     # 2. Desc
     # 3. filter_type
@@ -24,8 +25,11 @@ async def create_pin(json_request: CreatePinModel, request: Request):
             )
         );
     """
+
+    # We should be using transactions here but...
+    # Atomic operations should be guaranteed
     pool: asyncpg.Pool = request.app.pool_state["pool"]
-    await pool.execute(
+    status = await pool.execute(
         make_point_query,
         json_request.title,
         json_request.description,
@@ -33,11 +37,14 @@ async def create_pin(json_request: CreatePinModel, request: Request):
         json_request.x_coordinate,
         json_request.y_coordinate,
     )
-    return ORJSONResponse(content="", status_code=200)
+    if status[-1] != "0":
+        return Response(status_code=status.HTTP_201_OK)
+    return Response(status_code=status.HTTP_202_OK)
 
 
 @pins_router.get("/fetch")
-async def fetch_pins(request: Request):
+async def fetch_pins(request: Request) -> ORJSONResponse:
+    """Returns current pins and their information. Max is 100."""
     # Bulk fetches pins
     query = """
     SELECT (SELECT ST_AsText(location_geom)) AS point, title, description

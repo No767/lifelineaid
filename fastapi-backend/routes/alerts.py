@@ -1,6 +1,6 @@
 import asyncpg
-from fastapi import APIRouter, Request
-from fastapi.responses import ORJSONResponse
+from fastapi import APIRouter, Request, status as fastapi_status
+from fastapi.responses import ORJSONResponse, Response
 
 from utils import CreateAlertModel
 
@@ -8,7 +8,8 @@ alerts_router = APIRouter(prefix="/alerts", default_response_class=ORJSONRespons
 
 
 @alerts_router.post("/create")
-async def create_alert(json_request: CreateAlertModel, request: Request):
+async def create_alert(json_request: CreateAlertModel, request: Request) -> Response:
+    """Creates a new alert with the specified JSON model"""
     # Sub for user one
     query = """
     INSERT INTO alert (agency_id, title, description, x_coordinate, y_coordinate)
@@ -23,12 +24,13 @@ async def create_alert(json_request: CreateAlertModel, request: Request):
         json_request.y_coordinate,
     )
     if status[-1] != "0":
-        return ORJSONResponse(content="", status_code=200)
-    return ORJSONResponse(content="", status_code=400)
+        return Response(status_code=fastapi_status.HTTP_201_CREATED)
+    return Response(status_code=fastapi_status.HTTP_202_ACCEPTED)
 
 
 @alerts_router.get("/search")
-async def search_alerts(title: str, request: Request):
+async def search_alerts(title: str, request: Request) -> ORJSONResponse:
+    """Using full-text search, searches for an alert that has the given title"""
     sql = """
     SELECT title, description, created_at
     FROM alert
@@ -38,5 +40,4 @@ async def search_alerts(title: str, request: Request):
     """
     pool: asyncpg.Pool = request.app.pool_state["pool"]
     rows = await pool.fetch(sql, title)
-    response = ORJSONResponse(rows)
-    return response
+    return ORJSONResponse(rows)
