@@ -1,63 +1,99 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 
 import Colors from '../constants/Colors';
-import { ExternalLink } from './ExternalLink';
-import { MonoText } from './StyledText';
 import { Text, View } from './Themed';
 
-
-export default function EditScreenInfo({ path }: { path: string }) {
+export default function EditScreenInfo({path} : {path: string}) {
   return (
-    <View>
-      <View style={styles.getStartedContainer}>
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          This is going to be the contact page
-        </Text>
+    <ScrollView>
+    <View style={styles.container}>
 
+      <TouchableOpacity style={styles.emergencyButton} onPress={() => {}}>
+        <Text style={styles.emergencyButtonText}>Need Urgent Help? Tap Here</Text>
+      </TouchableOpacity>
 
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          This page will display local, government, and other aid contact info
-        </Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Local Organizations</Text>
+        <Text style={styles.cardDescription}>Largest humanitarian aid organization in Israel</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+          <Text style={styles.actionButtonText}>Contact</Text>
+        </TouchableOpacity>
       </View>
 
-       
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Government Agencies</Text>
+        <Text style={styles.cardDescription}>Largest humanitarian aid organization in Israel</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+          <Text style={styles.actionButtonText}>Contact</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Israel</Text>
+        <Text style={styles.cardDescription}>Largest humanitarian aid organization in Israel</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+          <Text style={styles.actionButtonText}>Contact</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ... Add other cards similarly ... */}
+
     </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  getStartedContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: 'D6CCC2',
+    paddingHorizontal: 20,
+    paddingTop: 1,
+  },
+  emergencyButton: {
+    backgroundColor: 'red',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  emergencyButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  card: {
+    backgroundColor: 'grey',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  cardDescription: {
+    fontSize: 18,
+    color: 'white',
+    marginBottom: 20,
+  },
+  actionButton: {
+    backgroundColor: 'blue',
+    padding: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 50,
   },
-  homeScreenFilename: {
-    marginVertical: 7,
-  },
-  codeHighlightContainer: {
-    borderRadius: 3,
-    paddingHorizontal: 4,
-  },
-  getStartedText: {
-    fontSize: 17,
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  helpContainer: {
-    marginTop: 15,
-    marginHorizontal: 20,
-    alignItems: 'center',
-  },
-  helpLink: {
-    paddingVertical: 15,
-  },
-  helpLinkText: {
-    textAlign: 'center',
+  actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
   },
 });
+
