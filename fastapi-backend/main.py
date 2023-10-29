@@ -1,54 +1,135 @@
-from fastapi import FastAPI, APIRouter
-from pydantic import BaseModel
+from fastapi import FastAPI, APIRouter, Request
+from typing import TypedDict, AsyncIterator
 from contextlib import asynccontextmanager
 import asyncpg
 from fastapi.responses import ORJSONResponse
 import os
 from dotenv import load_dotenv
+from structs import ShowcaseModel, CreatePinModel, CreateAlertModel
+
+import shapely.geometry
+import shapely.wkb
+from shapely.geometry.base import BaseGeometry
 
 load_dotenv()
 
 COCKROACH_URI = os.environ["COCKROACH_URI"]
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     pool = await asyncpg.create_pool(dsn=COCKROACH_URI, max_size=25, min_size=25, command_timeout=30)
-#     yield
-#     await pool.close()
-#
-# async def init_app():
-#     return await asyncpg.create_pool(dsn=COCKROACH_URI, max_size=25, min_size=25)
-    
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     async with asyncpg.create_pool(dsn=COCKROACH_URI, max_size=25, min_size=25) as pool:
-        
-#         app.state.pool = pool
-#         return pool
+from shapely.wkt import dumps, loads
 
-app = FastAPI()
-app.state.help = "help"
-
-# router = APIRouter(prefix="/dev", default_response_class=ORJSONResponse)
-    
-
-
-# # @app.route("/bulk-pins", methods=["GET"])
-# # async def bulk_pins(x_coordinate: int, y_coordinate: int) -> None:
-class PostPinModel(BaseModel):
+class PinDict(TypedDict):
+    point: str
     title: str
     description: str
-    filter_type: str
-    x_coordinate: float
-    y_coordinate: float
     
-class ShowcaseModel(BaseModel):
-    name: str
-    description: str
+class PinInfo:
+    __slots__ = ("point", "title", "description")
+    
+    def __init__(self, entry: PinDict):
+        self.point = entry["point"]
+        self.title = entry["title"]
+        self.description = entry["description"]
+        
+    def to_dict(self):
+        parsed_point = loads(self.point)
+        return {
+            "point": (parsed_point.x, parsed_point.y),
+            "title": self.title,
+            "description": self.description
+        }
 
+        
+class PoolState(TypedDict):
+    pool: asyncpg.Pool
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[PoolState]:
+    async with asyncpg.create_pool(dsn=COCKROACH_URI, max_size=25, min_size=25) as pool:
+        app.pool_state = {"pool": pool}
+        yield app.pool_state
 
-@app.get("/dev/search")
-async def showcase_search(q: str):
+app = FastAPI(lifespan=lifespan)
+
+pins_router = APIRouter(prefix="/pins", default_response_class=ORJSONResponse)
+alerts_router = APIRouter(prefix="/alerts", default_response_class=ORJSONResponse)
+dev_router = APIRouter(prefix="/dev", default_response_class=ORJSONResponse)
+        
+    
+
+@pins_router.post("/create")
+async def create_pin(json_request: CreatePinModel, request: Request):
+    # 1. Title
+    # 2. Desc
+    # 3. filter_type
+    # 4. x, 5. y, 6. srid
+    # This query makes the SRID from the coords + adds it into the database
+    make_point_query = """
+        WITH mp_srid AS (
+            SELECT ST_MakePoint($4, $5)
+        ) 
+        INSERT INTO pin (title, description, filter_type, x_coordinate, y_coordinate, location_geom)
+        VALUES ($1, $2, $3, $4, $5, (
+            SELECT st_makepoint FROM mp_srid
+            )
+        );
+    """
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    await pool.execute(make_point_query, 
+                       json_request.title, 
+                       json_request.description, 
+                       json_request.filter_type,
+                       json_request.x_coordinate, 
+                       json_request.y_coordinate
+                       )
+    return ORJSONResponse(content="", status_code=200)
+
+@pins_router.get("/fetch")
+async def fetch_pins(request: Request):
+    # Bulk fetches pins
+    query = """
+    SELECT (SELECT ST_AsText(location_geom)) AS point, title, description
+    FROM pin
+    LIMIT 100;
+    """
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    res = await pool.fetch(query)
+    parsed_records = [PinInfo(row).to_dict() for row in res]
+    return ORJSONResponse(content=parsed_records, status_code=200)
+
+@alerts_router.post("/create")
+async def create_alert(json_request: CreateAlertModel, request: Request):
+    # Sub for user one
+    query = """
+    INSERT INTO alert (agency_id, title, description, x_coordinate, y_coordinate)
+    VALUES (1, $1, $2, $3, $4);
+    """
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    status = await pool.execute(query, 
+                             json_request.title,
+                             json_request.description,
+                             json_request.x_coordinate,
+                             json_request.y_coordinate
+                             )
+    if status[-1] != "0":
+        return ORJSONResponse(content="", status_code=200)
+    return ORJSONResponse(content="", status_code=400)
+    
+@alerts_router.get("/search")
+async def search_alerts(title: str, request: Request):
+    sql = """
+    SELECT title, description, created_at
+    FROM alert
+    WHERE title % $1
+    ORDER BY similarity(title, $1) DESC
+    LIMIT 100;
+    """
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    rows = await pool.fetch(sql, title)
+    response = ORJSONResponse(rows)
+    return response
+
+@dev_router.get("/search")
+async def showcase_search(q: str, request: Request):
     sql = """
     SELECT name, description
     FROM devtest
@@ -56,38 +137,35 @@ async def showcase_search(q: str):
     ORDER BY similarity(name, $1) DESC
     LIMIT 100;
     """
-    conn = await asyncpg.connect(dsn=COCKROACH_URI)
-    rows = await conn.fetch(sql, q)
-
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    rows = await pool.fetch(sql, q)
     response = ORJSONResponse(rows)
-    await conn.close()
     return response
 
-@app.post("/dev/create")
-async def create_showcase(content: ShowcaseModel):
+@dev_router.post("/create")
+async def create_showcase(content: ShowcaseModel, request: Request):
     sql = """
     INSERT INTO devtest (name, description)
     VALUES ($1, $2);
     """
 
-    conn = await asyncpg.connect(dsn=COCKROACH_URI)
-    status = await conn.execute(sql, content.name, content.description)
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    status = await pool.execute(sql, content.name, content.description)
     if status[-1] != "0":
         return ORJSONResponse(content="", status_code=201)
     return ORJSONResponse(content="", status_code=203)
 
-@app.delete("/dev/delete/{id}")
-async def delete_showcase(id: int):
+@dev_router.delete("/delete/{id}")
+async def delete_showcase(id: int, request: Request):
     sql = """
     DELETE FROM devtest
     WHERE id = $1;
     """
-    conn = await asyncpg.connect(dsn=COCKROACH_URI)
-    status = await conn.execute(sql, id)
+    pool: asyncpg.Pool = request.app.pool_state["pool"]
+    status = await pool.execute(sql, id)
     if status[-1] != "0":
         return ORJSONResponse(content="", status_code=200)
     return ORJSONResponse(content="", status_code=404)
-    
-# @app.route("/create_pins", methods=["POST"])
-# async def create_pins(content: PostPinModel) -> None:
-    
+
+app.include_router(pins_router)
+app.include_router(dev_router)

@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS devtest (
 
 CREATE INDEX IF NOT EXISTS devtest_name_idx ON devtest USING GIN (name gin_trgm_ops);
 
+ALTER TABLE alert ADD COLUMN location VARCHAR(50) NOT NULL;
+ALTER TABLE pin ADD COLUMN location_geom GEOMETRY NULL;
