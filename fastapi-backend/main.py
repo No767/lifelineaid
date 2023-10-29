@@ -1,60 +1,61 @@
-from fastapi import FastAPI, APIRouter, Request
-from typing import TypedDict, AsyncIterator
-from contextlib import asynccontextmanager
-import asyncpg
-from fastapi.responses import ORJSONResponse
 import os
-from dotenv import load_dotenv
-from structs import ShowcaseModel, CreatePinModel, CreateAlertModel
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, TypedDict
 
-import shapely.geometry
-import shapely.wkb
-from shapely.geometry.base import BaseGeometry
+import asyncpg
+from dotenv import load_dotenv
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import ORJSONResponse
+
+from utils import CreateAlertModel, CreatePinModel
 
 load_dotenv()
 
 COCKROACH_URI = os.environ["COCKROACH_URI"]
 
-from shapely.wkt import dumps, loads
+from shapely.wkt import loads
+
 
 class PinDict(TypedDict):
     point: str
     title: str
     description: str
-    
+
+
 class PinInfo:
     __slots__ = ("point", "title", "description")
-    
+
     def __init__(self, entry: PinDict):
         self.point = entry["point"]
         self.title = entry["title"]
         self.description = entry["description"]
-        
+
     def to_dict(self):
         parsed_point = loads(self.point)
         return {
             "point": (parsed_point.x, parsed_point.y),
             "title": self.title,
-            "description": self.description
+            "description": self.description,
         }
 
-        
+
 class PoolState(TypedDict):
     pool: asyncpg.Pool
-    
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[PoolState]:
     async with asyncpg.create_pool(dsn=COCKROACH_URI, max_size=25, min_size=25) as pool:
         app.pool_state = {"pool": pool}
         yield app.pool_state
 
+
 app = FastAPI(lifespan=lifespan)
 
 pins_router = APIRouter(prefix="/pins", default_response_class=ORJSONResponse)
 alerts_router = APIRouter(prefix="/alerts", default_response_class=ORJSONResponse)
 dev_router = APIRouter(prefix="/dev", default_response_class=ORJSONResponse)
-        
-    
+
 
 @pins_router.post("/create")
 async def create_pin(json_request: CreatePinModel, request: Request):
@@ -74,14 +75,16 @@ async def create_pin(json_request: CreatePinModel, request: Request):
         );
     """
     pool: asyncpg.Pool = request.app.pool_state["pool"]
-    await pool.execute(make_point_query, 
-                       json_request.title, 
-                       json_request.description, 
-                       json_request.filter_type,
-                       json_request.x_coordinate, 
-                       json_request.y_coordinate
-                       )
+    await pool.execute(
+        make_point_query,
+        json_request.title,
+        json_request.description,
+        json_request.filter_type,
+        json_request.x_coordinate,
+        json_request.y_coordinate,
+    )
     return ORJSONResponse(content="", status_code=200)
+
 
 @pins_router.get("/fetch")
 async def fetch_pins(request: Request):
@@ -96,6 +99,7 @@ async def fetch_pins(request: Request):
     parsed_records = [PinInfo(row).to_dict() for row in res]
     return ORJSONResponse(content=parsed_records, status_code=200)
 
+
 @alerts_router.post("/create")
 async def create_alert(json_request: CreateAlertModel, request: Request):
     # Sub for user one
@@ -104,16 +108,18 @@ async def create_alert(json_request: CreateAlertModel, request: Request):
     VALUES (1, $1, $2, $3, $4);
     """
     pool: asyncpg.Pool = request.app.pool_state["pool"]
-    status = await pool.execute(query, 
-                             json_request.title,
-                             json_request.description,
-                             json_request.x_coordinate,
-                             json_request.y_coordinate
-                             )
+    status = await pool.execute(
+        query,
+        json_request.title,
+        json_request.description,
+        json_request.x_coordinate,
+        json_request.y_coordinate,
+    )
     if status[-1] != "0":
         return ORJSONResponse(content="", status_code=200)
     return ORJSONResponse(content="", status_code=400)
-    
+
+
 @alerts_router.get("/search")
 async def search_alerts(title: str, request: Request):
     sql = """
@@ -128,44 +134,7 @@ async def search_alerts(title: str, request: Request):
     response = ORJSONResponse(rows)
     return response
 
-@dev_router.get("/search")
-async def showcase_search(q: str, request: Request):
-    sql = """
-    SELECT name, description
-    FROM devtest
-    WHERE name % $1
-    ORDER BY similarity(name, $1) DESC
-    LIMIT 100;
-    """
-    pool: asyncpg.Pool = request.app.pool_state["pool"]
-    rows = await pool.fetch(sql, q)
-    response = ORJSONResponse(rows)
-    return response
-
-@dev_router.post("/create")
-async def create_showcase(content: ShowcaseModel, request: Request):
-    sql = """
-    INSERT INTO devtest (name, description)
-    VALUES ($1, $2);
-    """
-
-    pool: asyncpg.Pool = request.app.pool_state["pool"]
-    status = await pool.execute(sql, content.name, content.description)
-    if status[-1] != "0":
-        return ORJSONResponse(content="", status_code=201)
-    return ORJSONResponse(content="", status_code=203)
-
-@dev_router.delete("/delete/{id}")
-async def delete_showcase(id: int, request: Request):
-    sql = """
-    DELETE FROM devtest
-    WHERE id = $1;
-    """
-    pool: asyncpg.Pool = request.app.pool_state["pool"]
-    status = await pool.execute(sql, id)
-    if status[-1] != "0":
-        return ORJSONResponse(content="", status_code=200)
-    return ORJSONResponse(content="", status_code=404)
 
 app.include_router(pins_router)
 app.include_router(dev_router)
+app.include_router(alerts_router)
